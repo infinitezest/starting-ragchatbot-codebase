@@ -105,7 +105,7 @@ class TestAIGeneratorConversationHistory:
 
 
 class TestAIGeneratorToolExecution:
-    """Tests for the two-call tool execution pattern."""
+    """Tests for the single-round tool execution pattern."""
 
     @patch("ai_generator.anthropic.Anthropic")
     def test_tool_use_calls_tool_manager(self, MockAnthropic):
@@ -141,8 +141,8 @@ class TestAIGeneratorToolExecution:
         assert result == "Neural networks are computational models."
 
     @patch("ai_generator.anthropic.Anthropic")
-    def test_second_api_call_has_no_tools(self, MockAnthropic):
-        """Follow-up API call after tool execution omits tools and tool_choice."""
+    def test_single_round_intermediate_call_includes_tools(self, MockAnthropic):
+        """After 1 tool round (within MAX_TOOL_ROUNDS), the next API call still includes tools."""
         mock_client = MockAnthropic.return_value
         first_response = make_api_response(
             [make_tool_use_block("t1", "search_course_content", {"query": "test"})],
@@ -161,11 +161,11 @@ class TestAIGeneratorToolExecution:
         generator.generate_response(query="Q", tools=tools, tool_manager=mock_tool_manager)
 
         second_call_kwargs = mock_client.messages.create.call_args_list[1][1]
-        assert "tools" not in second_call_kwargs
-        assert "tool_choice" not in second_call_kwargs
+        assert second_call_kwargs["tools"] == tools
+        assert second_call_kwargs["tool_choice"] == {"type": "auto"}
 
     @patch("ai_generator.anthropic.Anthropic")
-    def test_second_api_call_includes_tool_results(self, MockAnthropic):
+    def test_single_round_includes_tool_results(self, MockAnthropic):
         """Follow-up messages contain tool_result with correct tool_use_id and content."""
         mock_client = MockAnthropic.return_value
         first_response = make_api_response(
@@ -198,3 +198,206 @@ class TestAIGeneratorToolExecution:
         assert tool_result_content[0]["type"] == "tool_result"
         assert tool_result_content[0]["tool_use_id"] == "t_abc"
         assert tool_result_content[0]["content"] == "MCP tool results"
+
+
+class TestAIGeneratorTwoToolRounds:
+    """Tests for two sequential tool rounds."""
+
+    @patch("ai_generator.anthropic.Anthropic")
+    def test_two_rounds_returns_final_text(self, MockAnthropic):
+        """Two sequential tool rounds followed by a final synthesis response."""
+        mock_client = MockAnthropic.return_value
+        response1 = make_api_response(
+            [make_tool_use_block("t1", "get_course_outline", {"course_name": "AI"})],
+            stop_reason="tool_use",
+        )
+        response2 = make_api_response(
+            [make_tool_use_block("t2", "search_course_content", {"query": "neural nets"})],
+            stop_reason="tool_use",
+        )
+        response3 = make_api_response(
+            [make_text_block("AI course lesson 4 covers neural nets.")],
+            stop_reason="end_turn",
+        )
+        mock_client.messages.create.side_effect = [response1, response2, response3]
+
+        mock_tool_manager = MagicMock()
+        mock_tool_manager.execute_tool.side_effect = ["Course outline...", "Neural net content..."]
+        tools = [{"name": "get_course_outline"}, {"name": "search_course_content"}]
+
+        generator = AIGenerator(api_key="test-key", model="test-model")
+        result = generator.generate_response(query="Q", tools=tools, tool_manager=mock_tool_manager)
+
+        assert result == "AI course lesson 4 covers neural nets."
+        assert mock_client.messages.create.call_count == 3
+        assert mock_tool_manager.execute_tool.call_count == 2
+
+    @patch("ai_generator.anthropic.Anthropic")
+    def test_two_rounds_final_call_strips_tools(self, MockAnthropic):
+        """After MAX_TOOL_ROUNDS exhausted, the final API call has no tools."""
+        mock_client = MockAnthropic.return_value
+        response1 = make_api_response(
+            [make_tool_use_block("t1", "get_course_outline", {"course_name": "AI"})],
+            stop_reason="tool_use",
+        )
+        response2 = make_api_response(
+            [make_tool_use_block("t2", "search_course_content", {"query": "topic"})],
+            stop_reason="tool_use",
+        )
+        response3 = make_api_response(
+            [make_text_block("Final.")], stop_reason="end_turn"
+        )
+        mock_client.messages.create.side_effect = [response1, response2, response3]
+
+        mock_tool_manager = MagicMock()
+        mock_tool_manager.execute_tool.side_effect = ["outline", "content"]
+        tools = [{"name": "get_course_outline"}, {"name": "search_course_content"}]
+
+        generator = AIGenerator(api_key="test-key", model="test-model")
+        generator.generate_response(query="Q", tools=tools, tool_manager=mock_tool_manager)
+
+        final_call_kwargs = mock_client.messages.create.call_args_list[2][1]
+        assert "tools" not in final_call_kwargs
+        assert "tool_choice" not in final_call_kwargs
+
+    @patch("ai_generator.anthropic.Anthropic")
+    def test_two_rounds_intermediate_call_has_tools(self, MockAnthropic):
+        """The second API call (after first tool round) still includes tools."""
+        mock_client = MockAnthropic.return_value
+        response1 = make_api_response(
+            [make_tool_use_block("t1", "get_course_outline", {"course_name": "AI"})],
+            stop_reason="tool_use",
+        )
+        response2 = make_api_response(
+            [make_tool_use_block("t2", "search_course_content", {"query": "topic"})],
+            stop_reason="tool_use",
+        )
+        response3 = make_api_response(
+            [make_text_block("Final.")], stop_reason="end_turn"
+        )
+        mock_client.messages.create.side_effect = [response1, response2, response3]
+
+        mock_tool_manager = MagicMock()
+        mock_tool_manager.execute_tool.side_effect = ["outline", "content"]
+        tools = [{"name": "get_course_outline"}, {"name": "search_course_content"}]
+
+        generator = AIGenerator(api_key="test-key", model="test-model")
+        generator.generate_response(query="Q", tools=tools, tool_manager=mock_tool_manager)
+
+        second_call_kwargs = mock_client.messages.create.call_args_list[1][1]
+        assert second_call_kwargs["tools"] == tools
+        assert second_call_kwargs["tool_choice"] == {"type": "auto"}
+
+    @patch("ai_generator.anthropic.Anthropic")
+    def test_two_rounds_message_accumulation(self, MockAnthropic):
+        """Final API call contains full conversation context from both rounds."""
+        mock_client = MockAnthropic.return_value
+        response1 = make_api_response(
+            [make_tool_use_block("t1", "get_course_outline", {"course_name": "AI"})],
+            stop_reason="tool_use",
+        )
+        response2 = make_api_response(
+            [make_tool_use_block("t2", "search_course_content", {"query": "topic"})],
+            stop_reason="tool_use",
+        )
+        response3 = make_api_response(
+            [make_text_block("Final.")], stop_reason="end_turn"
+        )
+        mock_client.messages.create.side_effect = [response1, response2, response3]
+
+        mock_tool_manager = MagicMock()
+        mock_tool_manager.execute_tool.side_effect = ["outline_result", "search_result"]
+        tools = [{"name": "get_course_outline"}, {"name": "search_course_content"}]
+
+        generator = AIGenerator(api_key="test-key", model="test-model")
+        generator.generate_response(query="Q", tools=tools, tool_manager=mock_tool_manager)
+
+        final_call_kwargs = mock_client.messages.create.call_args_list[2][1]
+        messages = final_call_kwargs["messages"]
+        # user, assistant(tool1), user(result1), assistant(tool2), user(result2)
+        assert len(messages) == 5
+        assert messages[0]["role"] == "user"
+        assert messages[1]["role"] == "assistant"
+        assert messages[2]["role"] == "user"
+        assert messages[2]["content"][0]["tool_use_id"] == "t1"
+        assert messages[2]["content"][0]["content"] == "outline_result"
+        assert messages[3]["role"] == "assistant"
+        assert messages[4]["role"] == "user"
+        assert messages[4]["content"][0]["tool_use_id"] == "t2"
+        assert messages[4]["content"][0]["content"] == "search_result"
+
+    @patch("ai_generator.anthropic.Anthropic")
+    def test_two_rounds_tool_execution_order(self, MockAnthropic):
+        """Tools are executed in the correct order across rounds."""
+        mock_client = MockAnthropic.return_value
+        response1 = make_api_response(
+            [make_tool_use_block("t1", "get_course_outline", {"course_name": "AI"})],
+            stop_reason="tool_use",
+        )
+        response2 = make_api_response(
+            [make_tool_use_block("t2", "search_course_content", {"query": "neural nets"})],
+            stop_reason="tool_use",
+        )
+        response3 = make_api_response(
+            [make_text_block("Final.")], stop_reason="end_turn"
+        )
+        mock_client.messages.create.side_effect = [response1, response2, response3]
+
+        mock_tool_manager = MagicMock()
+        mock_tool_manager.execute_tool.side_effect = ["outline", "content"]
+        tools = [{"name": "get_course_outline"}, {"name": "search_course_content"}]
+
+        generator = AIGenerator(api_key="test-key", model="test-model")
+        generator.generate_response(query="Q", tools=tools, tool_manager=mock_tool_manager)
+
+        calls = mock_tool_manager.execute_tool.call_args_list
+        assert calls[0] == (("get_course_outline",), {"course_name": "AI"})
+        assert calls[1] == (("search_course_content",), {"query": "neural nets"})
+
+
+class TestAIGeneratorEarlyTermination:
+    """Tests for early termination scenarios."""
+
+    @patch("ai_generator.anthropic.Anthropic")
+    def test_no_tool_use_returns_immediately(self, MockAnthropic):
+        """When Claude doesn't request tools, returns after 1 API call."""
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = make_api_response(
+            [make_text_block("Direct answer.")], stop_reason="end_turn"
+        )
+
+        mock_tool_manager = MagicMock()
+        tools = [{"name": "search_course_content"}]
+
+        generator = AIGenerator(api_key="test-key", model="test-model")
+        result = generator.generate_response(query="Q", tools=tools, tool_manager=mock_tool_manager)
+
+        assert result == "Direct answer."
+        assert mock_client.messages.create.call_count == 1
+        mock_tool_manager.execute_tool.assert_not_called()
+
+    @patch("ai_generator.anthropic.Anthropic")
+    def test_tool_use_without_tool_manager_returns_text(self, MockAnthropic):
+        """When tool_manager is None, returns text even if stop_reason is tool_use."""
+        mock_client = MockAnthropic.return_value
+        mock_client.messages.create.return_value = make_api_response(
+            [
+                make_text_block("I would search but can't."),
+                make_tool_use_block("t1", "search_course_content", {"query": "test"}),
+            ],
+            stop_reason="tool_use",
+        )
+
+        generator = AIGenerator(api_key="test-key", model="test-model")
+        result = generator.generate_response(
+            query="Q",
+            tools=[{"name": "search_course_content"}],
+            tool_manager=None,
+        )
+
+        assert result == "I would search but can't."
+        assert mock_client.messages.create.call_count == 1
+
+    def test_max_tool_rounds_constant(self):
+        """MAX_TOOL_ROUNDS is set to 2."""
+        assert AIGenerator.MAX_TOOL_ROUNDS == 2
