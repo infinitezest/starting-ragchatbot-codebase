@@ -1,12 +1,5 @@
-import sys
-import os
 import pytest
 from unittest.mock import MagicMock, Mock
-
-# Add backend directory to sys.path so bare imports (e.g. "from vector_store import ...") work
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-# Add tests directory so helpers module is importable
-sys.path.insert(0, os.path.dirname(__file__))
 
 from vector_store import SearchResults
 
@@ -98,3 +91,27 @@ def mock_vector_store():
     store.get_lesson_link.return_value = None
     store.get_course_link.return_value = None
     return store
+
+
+# ── Mock RAG System ──
+
+
+@pytest.fixture
+def mock_rag_system():
+    """A MagicMock standing in for RAGSystem with sensible defaults."""
+    rag = MagicMock()
+
+    rag.query.return_value = (
+        "This is the AI response.",
+        [{"text": "AI Course - Lesson 1", "url": "https://example.com/lesson1"}],
+    )
+
+    rag.session_manager.create_session.return_value = "session_1"
+    rag.session_manager.sessions = {}
+
+    rag.get_course_analytics.return_value = {
+        "total_courses": 2,
+        "course_titles": ["Introduction to AI", "Deep Learning Fundamentals"],
+    }
+
+    return rag
