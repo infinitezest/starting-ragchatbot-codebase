@@ -1,4 +1,5 @@
 """Shared mock helpers for Anthropic API responses."""
+
 from unittest.mock import Mock
 
 

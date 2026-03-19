@@ -10,8 +10,8 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from vector_store import SearchResults
 
-
 # ── SearchResults Fixtures ──
+
 
 @pytest.fixture
 def empty_search_results():
@@ -21,7 +21,9 @@ def empty_search_results():
 @pytest.fixture
 def error_search_results():
     return SearchResults(
-        documents=[], metadata=[], distances=[],
+        documents=[],
+        metadata=[],
+        distances=[],
         error="No course found matching 'Nonexistent Course'",
     )
 
@@ -30,11 +32,13 @@ def error_search_results():
 def single_result_search_results():
     return SearchResults(
         documents=["This is lesson content about transformers."],
-        metadata=[{
-            "course_title": "Introduction to AI",
-            "lesson_number": 3,
-            "chunk_index": 0,
-        }],
+        metadata=[
+            {
+                "course_title": "Introduction to AI",
+                "lesson_number": 3,
+                "chunk_index": 0,
+            }
+        ],
         distances=[0.25],
     )
 
@@ -49,9 +53,21 @@ def multi_result_search_results():
             "Content about CNNs from lesson 2.",
         ],
         metadata=[
-            {"course_title": "Deep Learning Fundamentals", "lesson_number": 1, "chunk_index": 0},
-            {"course_title": "Deep Learning Fundamentals", "lesson_number": 1, "chunk_index": 1},
-            {"course_title": "Deep Learning Fundamentals", "lesson_number": 2, "chunk_index": 5},
+            {
+                "course_title": "Deep Learning Fundamentals",
+                "lesson_number": 1,
+                "chunk_index": 0,
+            },
+            {
+                "course_title": "Deep Learning Fundamentals",
+                "lesson_number": 1,
+                "chunk_index": 1,
+            },
+            {
+                "course_title": "Deep Learning Fundamentals",
+                "lesson_number": 2,
+                "chunk_index": 5,
+            },
         ],
         distances=[0.1, 0.15, 0.3],
     )
@@ -61,16 +77,19 @@ def multi_result_search_results():
 def result_without_lesson_number():
     return SearchResults(
         documents=["General course overview content."],
-        metadata=[{
-            "course_title": "Python Basics",
-            "lesson_number": None,
-            "chunk_index": 0,
-        }],
+        metadata=[
+            {
+                "course_title": "Python Basics",
+                "lesson_number": None,
+                "chunk_index": 0,
+            }
+        ],
         distances=[0.2],
     )
 
 
 # ── Mock VectorStore ──
+
 
 @pytest.fixture
 def mock_vector_store():
@@ -79,5 +98,3 @@ def mock_vector_store():
     store.get_lesson_link.return_value = None
     store.get_course_link.return_value = None
     return store
-
-

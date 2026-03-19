@@ -22,7 +22,21 @@ cd backend && uv run uvicorn app:app --reload --port 8000
 # App available at http://localhost:8000
 ```
 
-There are no tests, linter, or formatter configured in this project.
+```bash
+# Format all Python files
+make format
+
+# Check formatting without changes (CI/dry-run)
+make check
+
+# Run tests
+make test
+
+# Run all quality checks (formatting check + tests)
+make quality
+```
+
+Tests use `pytest` (run from `backend/` directory). Formatting uses `black` (configured in `pyproject.toml`).
 
 ## Environment Setup
 

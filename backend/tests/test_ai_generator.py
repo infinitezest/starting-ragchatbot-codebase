@@ -114,7 +114,9 @@ class TestAIGeneratorToolExecution:
         first_response = make_api_response(
             [
                 make_text_block("Let me search for that."),
-                make_tool_use_block("tool_123", "search_course_content", {"query": "neural networks"}),
+                make_tool_use_block(
+                    "tool_123", "search_course_content", {"query": "neural networks"}
+                ),
             ],
             stop_reason="tool_use",
         )
@@ -125,8 +127,12 @@ class TestAIGeneratorToolExecution:
         mock_client.messages.create.side_effect = [first_response, second_response]
 
         mock_tool_manager = MagicMock()
-        mock_tool_manager.execute_tool.return_value = "[AI Course - Lesson 1]\nNeural network content."
-        tools = [{"name": "search_course_content", "description": "...", "input_schema": {}}]
+        mock_tool_manager.execute_tool.return_value = (
+            "[AI Course - Lesson 1]\nNeural network content."
+        )
+        tools = [
+            {"name": "search_course_content", "description": "...", "input_schema": {}}
+        ]
 
         generator = AIGenerator(api_key="test-key", model="test-model")
         result = generator.generate_response(
@@ -155,10 +161,14 @@ class TestAIGeneratorToolExecution:
 
         mock_tool_manager = MagicMock()
         mock_tool_manager.execute_tool.return_value = "search results"
-        tools = [{"name": "search_course_content", "description": "...", "input_schema": {}}]
+        tools = [
+            {"name": "search_course_content", "description": "...", "input_schema": {}}
+        ]
 
         generator = AIGenerator(api_key="test-key", model="test-model")
-        generator.generate_response(query="Q", tools=tools, tool_manager=mock_tool_manager)
+        generator.generate_response(
+            query="Q", tools=tools, tool_manager=mock_tool_manager
+        )
 
         second_call_kwargs = mock_client.messages.create.call_args_list[1][1]
         assert second_call_kwargs["tools"] == tools
@@ -212,7 +222,11 @@ class TestAIGeneratorTwoToolRounds:
             stop_reason="tool_use",
         )
         response2 = make_api_response(
-            [make_tool_use_block("t2", "search_course_content", {"query": "neural nets"})],
+            [
+                make_tool_use_block(
+                    "t2", "search_course_content", {"query": "neural nets"}
+                )
+            ],
             stop_reason="tool_use",
         )
         response3 = make_api_response(
@@ -222,11 +236,16 @@ class TestAIGeneratorTwoToolRounds:
         mock_client.messages.create.side_effect = [response1, response2, response3]
 
         mock_tool_manager = MagicMock()
-        mock_tool_manager.execute_tool.side_effect = ["Course outline...", "Neural net content..."]
+        mock_tool_manager.execute_tool.side_effect = [
+            "Course outline...",
+            "Neural net content...",
+        ]
         tools = [{"name": "get_course_outline"}, {"name": "search_course_content"}]
 
         generator = AIGenerator(api_key="test-key", model="test-model")
-        result = generator.generate_response(query="Q", tools=tools, tool_manager=mock_tool_manager)
+        result = generator.generate_response(
+            query="Q", tools=tools, tool_manager=mock_tool_manager
+        )
 
         assert result == "AI course lesson 4 covers neural nets."
         assert mock_client.messages.create.call_count == 3
@@ -254,7 +273,9 @@ class TestAIGeneratorTwoToolRounds:
         tools = [{"name": "get_course_outline"}, {"name": "search_course_content"}]
 
         generator = AIGenerator(api_key="test-key", model="test-model")
-        generator.generate_response(query="Q", tools=tools, tool_manager=mock_tool_manager)
+        generator.generate_response(
+            query="Q", tools=tools, tool_manager=mock_tool_manager
+        )
 
         final_call_kwargs = mock_client.messages.create.call_args_list[2][1]
         assert "tools" not in final_call_kwargs
@@ -282,7 +303,9 @@ class TestAIGeneratorTwoToolRounds:
         tools = [{"name": "get_course_outline"}, {"name": "search_course_content"}]
 
         generator = AIGenerator(api_key="test-key", model="test-model")
-        generator.generate_response(query="Q", tools=tools, tool_manager=mock_tool_manager)
+        generator.generate_response(
+            query="Q", tools=tools, tool_manager=mock_tool_manager
+        )
 
         second_call_kwargs = mock_client.messages.create.call_args_list[1][1]
         assert second_call_kwargs["tools"] == tools
@@ -310,7 +333,9 @@ class TestAIGeneratorTwoToolRounds:
         tools = [{"name": "get_course_outline"}, {"name": "search_course_content"}]
 
         generator = AIGenerator(api_key="test-key", model="test-model")
-        generator.generate_response(query="Q", tools=tools, tool_manager=mock_tool_manager)
+        generator.generate_response(
+            query="Q", tools=tools, tool_manager=mock_tool_manager
+        )
 
         final_call_kwargs = mock_client.messages.create.call_args_list[2][1]
         messages = final_call_kwargs["messages"]
@@ -335,7 +360,11 @@ class TestAIGeneratorTwoToolRounds:
             stop_reason="tool_use",
         )
         response2 = make_api_response(
-            [make_tool_use_block("t2", "search_course_content", {"query": "neural nets"})],
+            [
+                make_tool_use_block(
+                    "t2", "search_course_content", {"query": "neural nets"}
+                )
+            ],
             stop_reason="tool_use",
         )
         response3 = make_api_response(
@@ -348,7 +377,9 @@ class TestAIGeneratorTwoToolRounds:
         tools = [{"name": "get_course_outline"}, {"name": "search_course_content"}]
 
         generator = AIGenerator(api_key="test-key", model="test-model")
-        generator.generate_response(query="Q", tools=tools, tool_manager=mock_tool_manager)
+        generator.generate_response(
+            query="Q", tools=tools, tool_manager=mock_tool_manager
+        )
 
         calls = mock_tool_manager.execute_tool.call_args_list
         assert calls[0] == (("get_course_outline",), {"course_name": "AI"})
@@ -370,7 +401,9 @@ class TestAIGeneratorEarlyTermination:
         tools = [{"name": "search_course_content"}]
 
         generator = AIGenerator(api_key="test-key", model="test-model")
-        result = generator.generate_response(query="Q", tools=tools, tool_manager=mock_tool_manager)
+        result = generator.generate_response(
+            query="Q", tools=tools, tool_manager=mock_tool_manager
+        )
 
         assert result == "Direct answer."
         assert mock_client.messages.create.call_count == 1

@@ -20,13 +20,15 @@ def mock_config():
 @pytest.fixture
 def rag_system_with_mocks(mock_config):
     """RAGSystem with all heavy dependencies mocked."""
-    with patch("rag_system.DocumentProcessor") as MockDP, \
-         patch("rag_system.VectorStore") as MockVS, \
-         patch("rag_system.AIGenerator") as MockAI, \
-         patch("rag_system.SessionManager") as MockSM, \
-         patch("rag_system.CourseSearchTool") as MockCST, \
-         patch("rag_system.CourseOutlineTool") as MockCOT, \
-         patch("rag_system.ToolManager") as MockTM:
+    with (
+        patch("rag_system.DocumentProcessor") as MockDP,
+        patch("rag_system.VectorStore") as MockVS,
+        patch("rag_system.AIGenerator") as MockAI,
+        patch("rag_system.SessionManager") as MockSM,
+        patch("rag_system.CourseSearchTool") as MockCST,
+        patch("rag_system.CourseOutlineTool") as MockCOT,
+        patch("rag_system.ToolManager") as MockTM,
+    ):
 
         system = RAGSystem(mock_config)
 
@@ -67,14 +69,19 @@ class TestRAGSystemQuery:
         system.query("What is MCP?", session_id="s1")
 
         call_kwargs = system._mock_ai.generate_response.call_args[1]
-        assert call_kwargs["query"] == "Answer this question about course materials: What is MCP?"
+        assert (
+            call_kwargs["query"]
+            == "Answer this question about course materials: What is MCP?"
+        )
 
     def test_query_passes_tools_and_tool_manager(self, rag_system_with_mocks):
         """tools and tool_manager forwarded to AI generate_response."""
         system = rag_system_with_mocks
         system._mock_ai.generate_response.return_value = "Answer."
         system._mock_tool_manager.get_last_sources.return_value = []
-        system._mock_tool_manager.get_tool_definitions.return_value = [{"name": "search"}]
+        system._mock_tool_manager.get_tool_definitions.return_value = [
+            {"name": "search"}
+        ]
         system._mock_session.get_conversation_history.return_value = None
 
         system.query("Q", session_id="s1")
@@ -88,7 +95,9 @@ class TestRAGSystemQuery:
         system = rag_system_with_mocks
         system._mock_ai.generate_response.return_value = "Answer."
         system._mock_tool_manager.get_last_sources.return_value = []
-        system._mock_session.get_conversation_history.return_value = "User: Hi\nAssistant: Hello"
+        system._mock_session.get_conversation_history.return_value = (
+            "User: Hi\nAssistant: Hello"
+        )
 
         system.query("Follow up", session_id="s1")
 
@@ -146,9 +155,12 @@ class TestRAGSystemQuery:
         system = rag_system_with_mocks
         call_order = []
         system._mock_tool_manager.get_last_sources.side_effect = lambda: (
-            call_order.append("get"), [{"text": "src", "url": None}]
+            call_order.append("get"),
+            [{"text": "src", "url": None}],
         )[1]
-        system._mock_tool_manager.reset_sources.side_effect = lambda: call_order.append("reset")
+        system._mock_tool_manager.reset_sources.side_effect = lambda: call_order.append(
+            "reset"
+        )
         system._mock_ai.generate_response.return_value = "Answer."
         system._mock_session.get_conversation_history.return_value = None
 
