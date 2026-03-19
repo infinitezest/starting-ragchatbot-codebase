@@ -1,3 +1,11 @@
+// Theme initialization - runs immediately to prevent flash of wrong theme
+(function() {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme) {
+        document.documentElement.setAttribute('data-theme', savedTheme);
+    }
+})();
+
 // API base URL - use relative path to work from any host
 const API_URL = '/api';
 
@@ -22,7 +30,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // New Chat button
     document.getElementById('newChatBtn').addEventListener('click', startNewChat);
+
+    // Theme toggle
+    document.getElementById('themeToggle').addEventListener('click', toggleTheme);
 });
+
+// Theme toggle
+function toggleTheme() {
+    const html = document.documentElement;
+    const currentTheme = html.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? null : 'light';
+
+    if (newTheme) {
+        html.setAttribute('data-theme', newTheme);
+        localStorage.setItem('theme', newTheme);
+    } else {
+        html.removeAttribute('data-theme');
+        localStorage.removeItem('theme');
+    }
+
+    const themeToggle = document.getElementById('themeToggle');
+    themeToggle.setAttribute('aria-label',
+        newTheme === 'light' ? 'Toggle dark mode' : 'Toggle light mode'
+    );
+}
 
 // Event Listeners
 function setupEventListeners() {
