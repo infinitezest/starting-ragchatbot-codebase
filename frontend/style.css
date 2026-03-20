@@ -86,10 +86,7 @@
 
 /* Theme Toggle Button */
 .theme-toggle {
-    position: fixed;
-    top: 1rem;
-    right: 1rem;
-    z-index: 1000;
+    flex-shrink: 0;
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -186,25 +183,37 @@ body {
     padding: 0;
 }
 
-/* Header - Hidden */
+/* Header */
 header {
-    display: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.75rem 1.5rem;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--surface);
+    flex-shrink: 0;
+}
+
+.header-text {
+    display: flex;
+    flex-direction: column;
 }
 
 header h1 {
     font-size: 1.75rem;
     font-weight: 700;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #1a8cff;
     margin: 0;
 }
 
 .subtitle {
     font-size: 0.95rem;
     color: var(--text-secondary);
-    margin-top: 0.5rem;
+    margin-top: 0.25rem;
+}
+
+[data-theme="light"] .subtitle {
+    color: #000000;
 }
 
 /* Main Content Area with Sidebar */
@@ -906,8 +915,6 @@ details[open] .suggested-header::before {
     }
 
     .theme-toggle {
-        top: 0.5rem;
-        right: 0.5rem;
         width: 36px;
         height: 36px;
     }
